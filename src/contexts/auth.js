@@ -1,6 +1,6 @@
 import { useState, createContext, useEffect} from "react";
 import firebase from '../services/firebaseConnection';
-
+import { toast } from 'react-toastify';
 
 export const AuthContext = createContext({});
 
@@ -25,7 +25,35 @@ function AuthProvider({ children }){
     loadStorage();
 
   }, [])
+  
+  async function signIn(email, password){
+    setLoadingAuth(true);
 
+    await firebase.auth().signInWithEmailAndPassword(email, password)
+    .then(async (value)=> {
+      let uid = value.user.uid;
+
+      const userProfile = await firebase.firestore().collection('users')
+      .doc(uid).get();
+
+      let data = {
+         uid: uid,
+         nome: userProfile.data().nome,
+         avatarUrl: userProfile.data().avatarUrl,
+         email: value.user.email
+      };
+      setUser(data);
+      storageUser(data);
+      setLoadingAuth(false);
+      toast.success('Bem vindo a seus chamados!');
+
+    })
+    .catch((error)=>{
+      console.log(error);
+      setLoadingAuth(false);
+      toast.error('Opa algo deu errado!');
+    })
+  }
 
   async function signUp(email, password, nome){
     setLoadingAuth(true);
@@ -49,10 +77,12 @@ function AuthProvider({ children }){
       setUser(data);
       storageUser(data);
       setLoadingAuth(false);
+      toast.success('Bem vindo a seus chamados!');
       })
     })
     .catch((error)=>{
         console.log(error);
+        toast.error('Opa algo deu errado!');
         setLoadingAuth(false);
     })
   }
@@ -73,7 +103,9 @@ function AuthProvider({ children }){
         user, 
         loading,
         signUp,
-        signOut
+        signOut,
+        signIn,
+        loadingAuth
      }}
      >
          {children}
