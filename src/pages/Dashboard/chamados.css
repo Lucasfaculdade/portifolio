@@ -113,4 +113,13 @@ table td .badge{
     font-size: .8em;
     text-align: right;
  }
+ table td::before{
+     content: attr(data-label);
+     float: left;
+     font-weight: bold;
+     text-transform: uppercase;
+ }
+ table td:last-child{
+     border-bottom: 0;
+ }
 }

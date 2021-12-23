@@ -22,14 +22,14 @@ export default function Dashboard(){
         <div className="container dashboard">
          <span>Nenhum chamado registrado...</span>
 
-           <Link to="/new" className="new">
+           <Link to="/novochamado" className="new">
              <FiPlus size={25} color="#FFF" />
                Novo Chamado
            </Link>
          </div>
        ) : (
          <>
-          <Link to="/new" className="new">
+          <Link to="/novochamado" className="new">
              <FiPlus size={25} color="#FFF"/>
                Novo Chamado      
            </Link>
