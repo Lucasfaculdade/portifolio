@@ -1,11 +1,12 @@
-import { useState, useContext, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
+import firebase from '../../services/firebaseConnection';
+
 import Header from '../../components/Header';
 import Title from '../../components/Title';
 import { AuthContext } from '../../contexts/auth';
+
 import './novo.css';
-import firebase from '../../services/firebaseConnection';
-import { FiPlus } from 'react-icons/fi';
-import { type } from 'os';
+import { FiPlusCircle } from 'react-icons/fi'
 
 export default function NovoChamado(){
     
@@ -13,98 +14,132 @@ export default function NovoChamado(){
     const [customers, setCustomers] = useState([]);
     const [customerSelected, setCustomersSelected] = useState(0);
 
-    const [nomeCliente, setnomeCliente] = useState('');
-    const [setor, setSetor] = useState('');
-    const [telefone, setTelefone] = useState('');
+    const [assunto, setAssunto] = useState('Suporte');
+    const [status, setStatus] = useState('Aberto');
     const [complemento, setComplemento] = useState('');
 
     const { user } = useContext(AuthContext);
-    
-    useEffect(()=>{
+
+    useEffect(()=> {
         async function loadCustomers(){
-           await firebase.firestore().collection('customers')
-           .get()
-           .then((snapshot)=>{
-               let lista = [];
+          await firebase.firestore().collection('customers')
+          .get()
+          .then((snapshot)=>{
+              let lista = [];
 
-               snapshot.forEach((doc)=>{
-                 lista.push({
-                     id: doc.id,
-                     setor: doc.data().setor
-                 })
-               })
-               if(lista.length === 0){
-                 console.log('Nenhum setor encontrado');
-                 setCustomers([{id: '1', setor: 'sede'}]);
-                 setLoadCustomers(false);
-                 return;
-               }
-               setCustomers(lista);
-               setLoadCustomers(false);
-           })
-           .catch((error)=>{
-               console.log('Deu erro', error);
-               setLoadCustomers(false);
-               setCustomers([{id: '1', setor: ''}]);
-
-           })
+              snapshot.forEach((doc) => {
+                  lista.push({
+                      id: doc.id,
+                      nomeFantasia: doc.data().nomeFantasia
+                  })
+              })
+              if(lista.length === 0){
+                  console.log('Nenhuma empresa encontrada');
+                  setCustomers([ { id: '1', nomeFantasia: 'Freira' } ]);
+                  setLoadCustomers(false);
+                  return;
+            }
+            setCustomers(lista);
+            setLoadCustomers(false);
+          })
+          .catch((error)=>{
+            console.log('Deu algum erro!', error);
+            setLoadCustomers(false);
+            setCustomers([{ id: '1', nomeFantasia: ''} ]);
+          })
         }
+
         loadCustomers();
     }, []);
 
     function handleRegister(e){
-       e.preventDefault();
-       alert('TESTE')
+    e.prevent.Default();
+
+    alert('TESTE')
     }
 
     function handleChangeSelect(e){
-       console.log('index do setor selecionado', e.target.value);
-       console.log('Setor selecionado', customers[e.target.value]);
+      setAssunto(e.target.value);
     }
-    
-    function handleChangeOption(e){
-        setnomeCliente(e.target.value);
+
+    function handleOptionChange(e){
+      setStatus(e.target.value);
+    }
+
+    function handleChangeCustomers(e){
+       console.log('INDEX DO CLIENTE SELECIONADO: ', e.target.value);
+       console.log('Cliente selecionado ', customers[e.target.value])
     }
 
     return(
-        <div>
-           <Header />
-           <div className="content">
-               <Title name="Novo Chamado">
-                   <FiPlus size={25}/>
-               </Title>
-             <div className="container" >
-                 <form className="form-profile" onSubmit={handleRegister}>
-                     <label>Nome de Cliente</label>
-                     <input type="text" placeholder="Nome do Cliente" value={nomeCliente} onChange={handleChangeOption}/>
+      <div>
+          <Header/>
+          <div className="content">
+              <Title name="Novo Chamado">
+                  <FiPlusCircle size={25}/>
+              </Title>
+              <div className="container">
+                  <form className="form-profile" onSubmit={handleRegister}>
 
-                     <label>Setor</label>
-                     <select value={customerSelected} onChange={handleChangeSelect}>
-                        {customers.map((item, index) =>{
-                            return(
-                                <option key={item.setor} value={index}>
-                                    {item.setor}
-                                </option>
-                            )
-                        })}
-                     </select>
+                      <label>Cliente</label>
+                      <select value={customerSelected} onChange={handleChangeCustomers}>
+                         {customers.map((item, index) => {
+                             return(
+                                 <option key={item.id} value={index} >
+                                     {item.nomeFantasia}
+                                 </option>
+                             )
+                         })} 
+                      </select>
 
-                     <label>Telefone</label>
-                     <input  type="text" placeholder="Telefone para contato 55+ (61)91234-5678" value={telefone} onChange={ (e) => setTelefone(e.target.value) }/>
-                     
-                     <label>Descrição</label>
-                     <textarea
-                     type="text"
-                     value={complemento}
-                     placeholder="Descreva o ocorrido (Opcional)."
-                     onChange={ (e) => setComplemento(e.target)}
-                     />
-                     
-                     <br/>
-                     <button type="submit">Registrar</button>
-                 </form>
-             </div>
-           </div>
-        </div>
-    )
+                      <label>Assunto</label> 
+                      <select value={assunto} onChange={handleChangeSelect}>
+                          <option value="Suporte">Suporte</option>
+                          <option value="Visita Técnica">Visita técnica</option>
+                          <option value="Financeiro">Financeiro</option>
+                      </select>
+
+                      <label>Status</label>
+                       <div className="status">
+                        <input
+                         type="radio"
+                         name="radio"
+                         value="Aberto"
+                         onChange={handleOptionChange}
+                         checked={ status === 'Aberto' }
+                        />
+                        <span>Em Aberto</span>
+
+                        <input
+                         type="radio"
+                         name="radio"
+                         value="Em Atendimento"
+                         onChange={handleOptionChange}
+                         checked={ status === 'Progresso' }
+                        />
+                        <span>Em Atendimento</span>
+
+                        <input
+                         type="radio"
+                         name="radio"
+                         value="Em finalização"
+                         onChange={handleOptionChange}
+                         checked={ status === 'Finalizado' }
+                        />
+                        <span>Em finalização</span>
+                       </div>
+                       <label>Complemento</label>
+                       <textarea
+                         type="text"
+                         placeholder="Descreva o ocorrido(obrigatorio)."
+                         value={complemento}
+                         onChange={ (e) => setComplemento(e.target.value)}
+                       />
+
+                       <button type="submit">Registrar</button>
+                  </form>
+              </div>
+          </div>
+      </div>
+  )    
 }
