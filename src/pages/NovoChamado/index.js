@@ -1,145 +1,239 @@
+
 import { useState, useEffect, useContext } from 'react';
+
 import firebase from '../../services/firebaseConnection';
+import { useHistory, useParams} from 'react-router-dom';
 
 import Header from '../../components/Header';
 import Title from '../../components/Title';
 import { AuthContext } from '../../contexts/auth';
+import { toast } from 'react-toastify';
 
 import './novo.css';
 import { FiPlusCircle } from 'react-icons/fi'
 
-export default function NovoChamado(){
-    
-    const [loadCustomers, setLoadCustomers] = useState(true);
-    const [customers, setCustomers] = useState([]);
-    const [customerSelected, setCustomersSelected] = useState(0);
+export default function New(){
+  
+  const{ id } = useParams();
+  const history = useHistory();
 
-    const [assunto, setAssunto] = useState('Suporte');
-    const [status, setStatus] = useState('Aberto');
-    const [complemento, setComplemento] = useState('');
+  const [loadCustomers, setLoadCustomers] = useState(true);
+  const [customers, setCustomers] = useState([]);
+  const [customerSelected, setCustomerSelected] = useState(0);
 
-    const { user } = useContext(AuthContext);
+  const [assunto, setAssunto] = useState('Suporte');
+  const [status, setStatus] = useState('Aberto');
+  const [complemento, setComplemento] = useState('');
 
-    useEffect(()=> {
-        async function loadCustomers(){
-          await firebase.firestore().collection('customers')
-          .get()
-          .then((snapshot)=>{
-              let lista = [];
+  const [idCustomer, setIdCustomer] = useState(false);
 
-              snapshot.forEach((doc) => {
-                  lista.push({
-                      id: doc.id,
-                      nomeFantasia: doc.data().nomeFantasia
-                  })
-              })
-              if(lista.length === 0){
-                  console.log('Nenhuma empresa encontrada');
-                  setCustomers([ { id: '1', nomeFantasia: 'Freira' } ]);
-                  setLoadCustomers(false);
-                  return;
-            }
-            setCustomers(lista);
-            setLoadCustomers(false);
+  const { user } = useContext(AuthContext);
+
+
+  useEffect(()=> {
+    async function loadCustomers(){
+      await firebase.firestore().collection('customers')
+      .get()
+      .then((snapshot)=>{
+        let lista = [];
+
+        snapshot.forEach((doc) => {
+          lista.push({
+            id: doc.id,
+            nome: doc.data().nome
           })
-          .catch((error)=>{
-            console.log('Deu algum erro!', error);
-            setLoadCustomers(false);
-            setCustomers([{ id: '1', nomeFantasia: ''} ]);
-          })
+        })
+
+        if(lista.length === 0){
+          console.log('NENHUMA EMPRESA ENCONTRADA');
+          setCustomers([ { id: '1', nome: 'FREELA' } ]);
+          setLoadCustomers(false);
+          return;
         }
 
-        loadCustomers();
-    }, []);
+        setCustomers(lista);
+        setLoadCustomers(false);
+        
+        if(id){
+          loadId(lista);
+        }
 
-    function handleRegister(e){
-    e.prevent.Default();
+      })
+      .catch((error)=>{
+        console.log('DEU ALGUM ERRO!', error);
+        setLoadCustomers(false);
+        setCustomers([ { id: '1', nome: '' } ]);
+      })
 
-    alert('TESTE')
     }
 
-    function handleChangeSelect(e){
-      setAssunto(e.target.value);
-    }
+    loadCustomers();
 
-    function handleOptionChange(e){
-      setStatus(e.target.value);
-    }
+  }, [id ]);
+  
+  async function loadId(lista){
+    await firebase.firestore().collection('chamados').doc(id)
+    .get()
+    .then((snapshot)=>{
+      setAssunto(snapshot.data().assunto);
+      setStatus(snapshot.data().status);
+      setComplemento(snapshot.data().complemento)
 
-    function handleChangeCustomers(e){
-       console.log('INDEX DO CLIENTE SELECIONADO: ', e.target.value);
-       console.log('Cliente selecionado ', customers[e.target.value])
-    }
+      let index = lista.findIndex(index => index.id === snapshot.data().clienteId);
+      setCustomerSelected(index);
+      setIdCustomer(true);
 
-    return(
-      <div>
-          <Header/>
-          <div className="content">
-              <Title name="Novo Chamado">
-                  <FiPlusCircle size={25}/>
-              </Title>
-              <div className="container">
-                  <form className="form-profile" onSubmit={handleRegister}>
+    })
+    .catch((err)=>{
+      console.log('Erro no id informado: ', err);
+      setIdCustomer(false);
+    })
+  }
 
-                      <label>Cliente</label>
-                      <select value={customerSelected} onChange={handleChangeCustomers}>
-                         {customers.map((item, index) => {
-                             return(
-                                 <option key={item.id} value={index} >
-                                     {item.nomeFantasia}
-                                 </option>
-                             )
-                         })} 
-                      </select>
+  async function handleRegister(e){
+   e.preventDefault();
+   
+   if(idCustomer){
+     await firebase.firestore().collection('chamados')
+     .doc(id)
+     .update({
+       cliente: customers[customerSelected].nome,
+       clienteId: customers[customerSelected].id,
+       assunto: assunto,
+       status: status,
+       complemento: complemento,
+       userId: user.uid
+     })
+     .then(()=>{
+       toast.success('Chamado alterado com sucesso!');
+       setCustomerSelected(0);
+       setComplemento('');
+       history.push('/dashboard');
+     })
+     .catch((err)=>{
+       toast.error('Ops deu algo errodo, entre em contato com administrador.')
+       console.log(err);
+     })
 
-                      <label>Assunto</label> 
-                      <select value={assunto} onChange={handleChangeSelect}>
-                          <option value="Suporte">Suporte</option>
-                          <option value="Visita Técnica">Visita técnica</option>
-                          <option value="Financeiro">Financeiro</option>
-                      </select>
+     return;
+   }
 
-                      <label>Status</label>
-                       <div className="status">
-                        <input
-                         type="radio"
-                         name="radio"
-                         value="Aberto"
-                         onChange={handleOptionChange}
-                         checked={ status === 'Aberto' }
-                        />
-                        <span>Em Aberto</span>
+   await firebase.firestore().collection('chamados')
+   .add({
+     created: new Date(),
+     cliente: customers[customerSelected].nome,
+     clienteId: customers[customerSelected].id,
+     assunto: assunto,
+     status: status,
+     complemento: complemento,
+     userId: user.uid
+   })
+   .then(()=>{
+     toast.success('Chamado criado com sucesso!');
+     setComplemento('');
+     setCustomerSelected(0);
+   })
+   .catch((err)=>{
+     toast.error('Ops erro ao registrar, tente mais tarde.')
+     console.log(err);
+   })
+  }
 
-                        <input
-                         type="radio"
-                         name="radio"
-                         value="Em Atendimento"
-                         onChange={handleOptionChange}
-                         checked={ status === 'Progresso' }
-                        />
-                        <span>Em Atendimento</span>
+  function handleChangeSelect(e){
+    setAssunto(e.target.value);
+  }
 
-                        <input
-                         type="radio"
-                         name="radio"
-                         value="Em finalização"
-                         onChange={handleOptionChange}
-                         checked={ status === 'Finalizado' }
-                        />
-                        <span>Em finalização</span>
-                       </div>
-                       <label>Complemento</label>
-                       <textarea
-                         type="text"
-                         placeholder="Descreva o ocorrido(obrigatorio)."
-                         value={complemento}
-                         onChange={ (e) => setComplemento(e.target.value)}
-                       />
+  function handleOptionChange(e){
+    setStatus(e.target.value);
+  }
 
-                       <button type="submit">Registrar</button>
-                  </form>
-              </div>
-          </div>
+  function handleChangeCustomers(e){
+   console.log('INDEX DP CLIENTE SELECIONADO: ', e.target.value);
+   console.log('Cliente selecionado ', customers[e.target.value])
+   setCustomerSelected(e.target.value);
+  }
+
+  return(
+    <div>
+      <Header/>
+
+      <div className="content">
+        <Title name="Novo chamado">
+          <FiPlusCircle size={25} />
+        </Title>
+
+        <div className="container">
+
+          <form className="form-profile"  onSubmit={handleRegister} >
+            
+            <label>Cliente</label>
+
+            {loadCustomers ? (
+              <input type="text" disabled={true} value="Carregando clientes..." />
+            ) : (
+                <select value={customerSelected} onChange={handleChangeCustomers} >
+                {customers.map((item, index) => {
+                  return(
+                    <option key={item.id} value={index} >
+                      {item.nome}
+                    </option>
+                  )
+                })}
+              </select>
+            )}
+
+            <label>Assunto</label>
+            <select value={assunto} onChange={handleChangeSelect}>
+              <option value="Suporte">Suporte</option>
+              <option value="Visita Tecnica">Visita Tecnica</option>
+              <option value="Financeiro">Financeiro</option>
+            </select>
+
+            <label>Status</label>
+            <div className="status">
+              <input 
+              type="radio"
+              name="radio"
+              value="Aberto"
+              onChange={handleOptionChange}
+              checked={ status === 'Aberto' }
+              />
+              <span>Em Aberto</span>
+
+              <input 
+              type="radio"
+              name="radio"
+              value="Progresso"
+              onChange={handleOptionChange}
+              checked={ status === 'Progresso' }
+              />
+              <span>Progresso</span>
+
+              <input 
+              type="radio"
+              name="radio"
+              value="Atendido"
+              onChange={handleOptionChange}
+              checked={ status === 'Atendido' }
+              />
+              <span>Atendido</span>
+            </div>
+
+            <label>Complemento</label>
+            <textarea
+              type="text"
+              placeholder="Descreva seu problema (opcional)."
+              value={complemento}
+              onChange={ (e) => setComplemento(e.target.value) }
+            />
+            
+            <button type="submit">Registrar</button>
+
+          </form>
+
+        </div>
+
       </div>
-  )    
+    </div>
+  )
 }
